@@ -9,7 +9,7 @@ RUN apt-get update && \
     apt-get upgrade -y
 
 # Install System Packages
-RUN apt-get install ffmpeg -y
+RUN apt-get install -y ffmpeg libgl1
 
 # Download Models
 COPY builder/download_models.sh /download_models.sh
@@ -23,11 +23,11 @@ RUN pip install --upgrade pip && \
     pip install -r /requirements.txt && \
     rm /requirements.txt
 
-ADD src .
+ADD . /src
 
 # Cleanup section (Worker Template)
 RUN apt-get autoremove -y && \
     apt-get clean -y && \
     rm -rf /var/lib/apt/lists/*
 
-CMD [ "python", "-u", "/rp_handler.py" ]
+CMD [ "python", "-u", "/src/rp_handler.py" ]

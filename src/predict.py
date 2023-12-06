@@ -8,9 +8,9 @@ from concurrent.futures import ThreadPoolExecutor
 import torch
 import numpy as np
 
-from whisper.model import Whisper, ModelDimensions
-from whisper.tokenizer import LANGUAGES
-from whisper.utils import format_timestamp
+from whisper_timestamped.model import Whisper, ModelDimensions
+from whisper_timestamped.tokenizer import LANGUAGES
+from whisper_timestamped.utils import format_timestamp
 
 
 class Predictor:

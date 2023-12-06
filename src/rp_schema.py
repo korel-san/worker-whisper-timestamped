@@ -82,5 +82,11 @@ INPUT_VALIDATIONS = {
         'type': float,
         'required': False,
         'default': 0.6
-    }
+    },
+    'return_types': {
+        'type': list,
+        'required': False,
+        'default': ["vtt", "json"],
+        'values': ["vtt", "json"],
+    },
 }

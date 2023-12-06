@@ -1,7 +1,7 @@
 ''' infer.py for runpod worker '''
 
 import os
-import predict
+from predict import Predictor
 
 import runpod
 from runpod.serverless.utils.rp_validator import validate
@@ -9,8 +9,36 @@ from runpod.serverless.utils import download_files_from_urls, rp_cleanup
 
 from rp_schema import INPUT_VALIDATIONS
 
-MODEL = predict.Predictor()
-MODEL.setup()
+
+def write_vtt(transcript):
+    '''
+    Write the transcript in VTT format.
+    '''
+    result = ""
+    for segment in transcript:
+        result += f"{segment['start']} --> {segment['end']}\n"
+        result += f"{segment['text'].strip().replace('-->', '->')}\n"
+        result += "\n"
+    return result
+
+
+def write_json(transcript, filename):
+    '''
+    Write the transcript in JSON format.
+    '''
+    output = {
+        "file": filename,
+        "words": []
+    }
+    for segment in transcript:
+        words = segment['text'].split()
+        for i, word in enumerate(words):
+            output["words"].append({
+                "start": segment['start'],
+                "end": segment['end'],
+                "word": word
+            })
+    return output
 
 
 def run(job):
@@ -33,6 +61,8 @@ def run(job):
     job_input['logprob_threshold'] = float(job_input.get('logprob_threshold', -1.0))
     job_input['no_speech_threshold'] = 0.6
 
+    job_input.setdefault("model", "large-v2")  # Set default model to "large-v2"
+
     # Input validation
     validated_input = validate(job_input, INPUT_VALIDATIONS)
 
@@ -41,10 +71,12 @@ def run(job):
 
     job_input['audio'] = download_files_from_urls(job['id'], [job_input['audio']])[0]
 
-    whisper_results = MODEL.predict(
+    predictor = Predictor()
+    predictor.setup()
+    whisper_results = predictor.predict(
         audio=job_input["audio"],
         model_name=job_input.get("model", 'base'),
-        transcription=job_input.get('transcription', 'plain_text'),
+        transcription=job_input.get('transcription', 'plain text'),
         translate=job_input.get('translate', False),
         language=job_input.get('language', None),
         temperature=job_input["temperature"],
@@ -63,7 +95,14 @@ def run(job):
 
     rp_cleanup.clean(['input_objects'])
 
-    return whisper_results
+    # Generate and return the required types of transcriptions
+    transcriptions = {}
+    if "vtt" in job_input.get("return_types", ["vtt", "json"]):
+        transcriptions["vtt"] = write_vtt(whisper_results["segments"])
+    if "json" in job_input.get("return_types", ["vtt", "json"]):
+        transcriptions["json"] = write_json(whisper_results["segments"], job['input']['audio'])
+
+    return transcriptions
 
 
 runpod.serverless.start({"handler": run})
